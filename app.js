@@ -3,12 +3,12 @@ const fs = require('fs-extra');
 const child_process = require('child_process');
 const FOLLOW = 'https://www.tumblr.com/following/';
 const DOWNLOAD_CONCURRENCY = 5;
-const CRAWL_CONCURRENCY = 3;
-const MAX_PAGE = 10;
+const CRAWL_CONCURRENCY = 2;
+const MAX_PAGE = 5;
 
 (async () => {
     const browser = await puppeteer.launch({
-        headless: false
+        headless: true
     });
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(90000)
@@ -37,7 +37,7 @@ const MAX_PAGE = 10;
     for (let i = 1; i <= userList.length; i = i + CRAWL_CONCURRENCY) {
         try {
             await crawlVideo(browser, userList.filter((value, index) => {
-                return index >= 1 - 1 && index < 1 + CRAWL_CONCURRENCY - 1;
+                return index >= i - 1 && index < i + CRAWL_CONCURRENCY - 1;
             }));
             
         } catch (error) {
@@ -84,25 +84,29 @@ async function gerUrlPerUser(browser, user) {
         await page.close();
         return await('Closed');
     }
-
-    var lists = await page.$$eval('[type="video/mp4"]', elems => {
-        return elems.map(elem => elem.src)
-    });
-    var pagination = await page.$eval('#next_page_link', elem => elem.href);
-    var count = 2;
-    while (true) {
-        await page.goto(pagination);
-        lists = lists.concat(await page.$$eval('[type="video/mp4"]', elems => {
+    try {
+        var lists = await page.$$eval('[type="video/mp4"]', elems => {
             return elems.map(elem => elem.src)
-        }));
-        if (await page.$('#next_page_link') && count++ < MAX_PAGE) {
-            pagination = await page.$eval('#next_page_link', elem => elem.href);
-        } else {
-            break;
+        });
+        var pagination = await page.$eval('#next_page_link', elem => elem.href);
+        var count = 2;
+        while (true) {
+            await page.goto(pagination);
+            lists = lists.concat(await page.$$eval('[type="video/mp4"]', elems => {
+                return elems.map(elem => elem.src)
+            }));
+            if (await page.$('#next_page_link') && count++ < MAX_PAGE) {
+                pagination = await page.$eval('#next_page_link', elem => elem.href);
+            } else {
+                break;
+            }
         }
+        await page.close();   
+    } catch (error) {
+        console.log(error);
+        await page.close(); 
     }
-    await page.close();
-    console.log(`${user} begin to download! ${lists.length} videos`);
+    console.log(`${user} begin to download! ${lists.length} videos \n${lists}`);
     for (let i = 1; i <= lists.length; i = i + DOWNLOAD_CONCURRENCY) {
         try {
             await download(lists.filter((value, index) => {
