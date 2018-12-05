@@ -75,6 +75,7 @@ async function crawlVideo(browser, userArray) {
 
 
 async function gerUrlPerUser(browser, user) {
+    console.log(`${user} begin to crawl url`)
     const page = await browser.newPage();
     try {
         await page.goto(user);
@@ -101,9 +102,9 @@ async function gerUrlPerUser(browser, user) {
         }
     }
     await page.close();
+    console.log(`${user} begin to download! ${lists.length} videos`);
     for (let i = 1; i <= lists.length; i = i + DOWNLOAD_CONCURRENCY) {
         try {
-            console.log(`${user} begin to download! ${lists.length} videos`);
             await download(lists.filter((value, index) => {
                 return index >= i - 1 && index < i + DOWNLOAD_CONCURRENCY - 1;
             }), user.slice(8).split('.')[0]);
