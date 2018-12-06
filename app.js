@@ -50,9 +50,9 @@ const MAX_PAGE = 5;
 async function download(urls, folder = 'video') {
     let promises = await urls.map(async url => {
         try {
-            await fs.ensureDir(`./t/${folder}`);
-            if (!fs.existsSync(`./t/${folder}/${parseUrl(url)}`)) {
-                await child_process.exec(`cd d: && cd ./t/${folder} && curl -O ${parseUrl(url)} --progress`);
+            await fs.ensureDir(`d:/t/${folder}`);
+            if (!fs.existsSync(`d:/t/${folder}/${parseUrl(url)}`)) {
+                await child_process.exec(`d: && cd ./t/${folder} && curl -O ${parseUrl(url)} --progress`);
             }
         } catch (err) {
             console.error(err)
