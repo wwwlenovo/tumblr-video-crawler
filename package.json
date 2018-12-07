@@ -4,6 +4,7 @@
   "description": "crawler",
   "main": "app.js",
   "scripts": {
+    "start": "node app.js > crawl.log",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
