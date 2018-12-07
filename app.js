@@ -3,8 +3,8 @@ const fs = require('fs-extra');
 const child_process = require('child_process');
 const FOLLOW = 'https://www.tumblr.com/following/';
 const DOWNLOAD_CONCURRENCY = 5;
-const CRAWL_CONCURRENCY = 2;
-const MAX_PAGE = 5;
+const CRAWL_CONCURRENCY = 3;
+const MAX_PAGE = 10;
 
 (async () => {
     const browser = await puppeteer.launch({
@@ -39,7 +39,7 @@ const MAX_PAGE = 5;
             await crawlVideo(browser, userList.filter((value, index) => {
                 return index >= i - 1 && index < i + CRAWL_CONCURRENCY - 1;
             }));
-            
+
         } catch (error) {
             console.log(error);
         }
@@ -50,10 +50,9 @@ const MAX_PAGE = 5;
 async function download(urls, folder = 'video') {
     let promises = await urls.map(async url => {
         try {
-            await fs.ensureDir(`d:/t/${folder}`);
-            if (!fs.existsSync(`d:/t/${folder}/${parseUrl(url)}`)) {
-                await child_process.exec(`d: && cd ./t/${folder} && curl -O ${parseUrl(url)} --progress`);
-            }
+            await fs.ensureDir(`./t/${folder}`);
+            //console.log(`cd ./t/${ folder } && curl - C - O ${ parseUrl(url) }`)
+            await child_process.exec(`cd ./t/${folder} && curl -C -O ${parseUrl(url)}`);
         } catch (err) {
             console.error(err)
         }
@@ -80,33 +79,63 @@ async function gerUrlPerUser(browser, user) {
     try {
         await page.goto(user);
     } catch (error) {
-        console.log(error);
-        await page.close();
-        return await('Closed');
+        console.log(`Can't open ${user}`);
+        try {
+            if (user.startsWith('https')) {
+                user = 'http' + user.slice(5);
+                console.log(`Try ${user}`);
+                await page.goto(user);
+            } else {
+                await page.close();
+                return await ('Closed');
+            }
+        } catch (error) {
+            console.log(error)
+            await page.close();
+            return await ('Closed');
+        }
     }
     try {
         var lists = await page.$$eval('[type="video/mp4"]', elems => {
             return elems.map(elem => elem.src)
         });
-        var pagination = await page.$eval('#next_page_link', elem => elem.href);
-        var count = 2;
-        while (true) {
-            await page.goto(pagination);
-            lists = lists.concat(await page.$$eval('[type="video/mp4"]', elems => {
-                return elems.map(elem => elem.src)
-            }));
-            if (await page.$('#next_page_link') && count++ < MAX_PAGE) {
-                pagination = await page.$eval('#next_page_link', elem => elem.href);
-            } else {
-                break;
-            }
+        let reg = /(http|https)(:\/\/)([a-zA-Z0-9\.\_\/]+?)([0-9]{3,4}(\.jpg))/g;
+        let content = await page.content();
+        let pics = content.match(reg);
+//        console.log(pics);
+        if (pics !== null) {
+            lists = lists.concat(pics);
         }
-        await page.close();   
+        var count = 2;
+        try {
+            var pagination = await page.$eval('#next_page_link', elem => elem.href);
+            while (true) {
+                await page.goto(pagination);
+                lists = lists.concat(await page.$$eval('[type="video/mp4"]', elems => {
+                    return elems.map(elem => elem.src)
+                }));
+                let reg = /(http|https)(:\/\/)([a-zA-Z0-9\.\_\/]+?)([0-9]{3,4}(\.jpg))/g;
+                let content = await page.content();
+                let pics = content.match(reg);
+                //        console.log(pics);
+                if (pics !== null) {
+                    lists = lists.concat(pics);
+                }
+                if (await page.$('#next_page_link') && count++ < MAX_PAGE) {
+                    pagination = await page.$eval('#next_page_link', elem => elem.href);
+                } else {
+                    break;
+                }
+            }
+
+        } catch (error) {
+            throw new Error(`${user} no page ${count}`);
+        }
     } catch (error) {
         console.log(error);
-        await page.close(); 
+        await page.close();
     }
-    console.log(`${user} begin to download! ${lists.length} videos \n${lists}`);
+    console.log(`${user} begin to download! Total:${lists.length} \n`);
     for (let i = 1; i <= lists.length; i = i + DOWNLOAD_CONCURRENCY) {
         try {
             await download(lists.filter((value, index) => {
@@ -124,10 +153,11 @@ async function gerUrlPerUser(browser, user) {
  */
 function parseUrl(url) {
     let res = `https://vtt.tumblr.com/`;
-    let array = url.split('/')
-    if (url.endsWith('.mp4')) {
+    if (url.endsWith('.mp4') || url.endsWith('.jpg')) {
+        //console.log(url)
         return url;
     }
+    let array = url.split('/')
     if (url.endsWith('/480')) {
         res = res + array[array.length - 2] + '.mp4';
     } else {
