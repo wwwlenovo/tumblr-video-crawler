@@ -13,7 +13,7 @@ npm install
 npm start
 ```
 
-## Congiurations
+## Configurations
 
 ```javascript
 const DOWNLOAD_CONCURRENCY = 8; //How many download process run concurrently
