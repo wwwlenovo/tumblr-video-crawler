@@ -4,11 +4,13 @@
   "description": "crawler",
   "main": "app.js",
   "scripts": {
+    "start": "node app.js > crawl.log",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "fs-extra": "^7.0.1",
     "puppeteer": "^1.11.0"
   }
 }
